@@ -1,13 +1,7 @@
 # Achivement: They implemented ReCaptcha v3, but can still submit application
 # and get positive feedback that will be contacted
 
-from selenium.webdriver import Chrome
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait, Select
-from selenium.webdriver.support import expected_conditions as EC
-from json import load
-from time import sleep
-from pyautogui import typewrite, press
+from ..imports import *
 
 driver = Chrome()
 waiter = WebDriverWait(driver, 10)

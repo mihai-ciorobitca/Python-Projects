@@ -2,14 +2,7 @@
 # You can now only appy by sending email with your CV
 # Obs.: they have a terrible captcha system
 
-from selenium.webdriver import Chrome
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait, Select
-from selenium.webdriver.support import expected_conditions as EC
-from json import load
-from time import sleep
-from pyautogui import typewrite, press
-from random import choice
+from ..imports import *
 
 driver = Chrome()
 url = 'https://www.librabank.ro/jobs/aplica/1099'
