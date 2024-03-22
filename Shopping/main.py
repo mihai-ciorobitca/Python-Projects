@@ -35,18 +35,15 @@ class Task(ft.UserControl):
 
 
 class List(ft.UserControl):
-    def __init__(self, list_name, list_delete, list_open, list_edit):
+    def __init__(self, list_name, list_delete, list_open, list_save):
         super().__init__()
         self.list_name = list_name
         self.list_delete = list_delete
         self.list_open = list_open
-        self.list_edit = list_edit
+        self.list_save = list_save
 
         self.text_element = ft.TextField(
             value=self.list_name, expand=True, border="none", read_only=True
-        )
-        self.delete_element = ft.IconButton(
-            icon=ft.icons.DELETE_OUTLINE_OUTLINED, on_click=self.delete_clicked
         )
         self.open_element = ft.IconButton(
             icon=ft.icons.OPEN_IN_BROWSER_OUTLINED, on_click=self.open_clicked
@@ -60,16 +57,21 @@ class List(ft.UserControl):
         self.cancel_element = ft.IconButton(
             icon=ft.icons.CANCEL, on_click=self.cancel_clicked, visible=False
         )
+        self.delete_element = ft.IconButton(
+            icon=ft.icons.DELETE_OUTLINE_OUTLINED,
+            on_click=self.delete_clicked,
+            icon_color=ft.colors.RED,
+        )
 
     def build(self):
         list_row = ft.Row(
             controls=[
                 self.text_element,
-                self.delete_element,
                 self.open_element,
                 self.edit_element,
                 self.save_element,
                 self.cancel_element,
+                self.delete_element,
             ]
         )
         return list_row
@@ -85,6 +87,8 @@ class List(ft.UserControl):
         self.edit_element.visible = True
         self.save_element.visible = False
         self.cancel_element.visible = False
+        self.list_save(self.list_name, self.text_element.value)
+        self.list_name = self.text_element.value
         self.update()
 
     def open_clicked(self, event):
@@ -108,6 +112,7 @@ class List(ft.UserControl):
         self.edit_element.visible = True
         self.save_element.visible = False
         self.cancel_element.visible = False
+        self.text_element.value = self.list_name
         self.update()
 
 
@@ -120,8 +125,6 @@ class ListPage(ft.UserControl):
         self.page = page
         self.list_name = list_name
         self.page.title = self.list_name.upper()
-
-    def build(self):
         self.home_button = ft.FloatingActionButton(
             icon=ft.icons.HOME, on_click=self.home_clicked
         )
@@ -134,8 +137,10 @@ class ListPage(ft.UserControl):
         )
 
         self.tasks = ft.ListView(spacing=20, height=500)
-        lists = self.client_storage.get("lists")
-        items = lists.get(self.list_name)
+        self.lists = self.client_storage.get("lists")
+
+    def build(self):
+        items = self.lists.get(self.list_name)
         for item in items.keys():
             new_task = Task(item, items[item], self.task_delete, self.task_checked)
             self.tasks.controls.append(new_task)
@@ -199,20 +204,19 @@ class MainPage(ft.UserControl):
         self.warning = warning
         self.warning.actions[0].on_click = self.close_clicked
         self.page = page
-
-    def build(self):
         self.new_input = ft.TextField(hint_text="Create a list", expand=True)
         self.new_button = ft.FloatingActionButton(
             icon=ft.icons.ADD, on_click=self.create_clicked
         )
         self.input_row = ft.Row(controls=[self.new_input, self.new_button])
-
         self.lists = ft.ListView(spacing=20, height=500)
+
+    def build(self):
         lists = self.client_storage.get("lists")
         if lists is None:
             lists = {}
         for list in lists.keys():
-            new_list = List(list, self.list_delete, self.list_open, self.list_edit)
+            new_list = List(list, self.list_delete, self.list_open, self.list_save)
             self.lists.controls.append(new_list)
 
         self.view = ft.Column(controls=[self.input_row, self.lists])
@@ -236,7 +240,7 @@ class MainPage(ft.UserControl):
                 items[list_name] = {}
                 self.client_storage.set("lists", items)
                 new_list = List(
-                    list_name, self.list_delete, self.list_open, self.list_edit
+                    list_name, self.list_delete, self.list_open, self.list_save
                 )
                 self.lists.controls.append(new_list)
                 self.new_input.value = ""
@@ -253,20 +257,39 @@ class MainPage(ft.UserControl):
         self.page.update()
 
     def list_delete(self, list):
-        items = self.client_storage.get("lists")
+        self.warning.title.value = "Delete"
+        self.warning.content.value = "Are you sure you want to delete the list ?"
+        self.page.dialog = self.warning
+        self.warning.actions = [
+            ft.ElevatedButton("Yes", on_click=lambda event, list=list: self.confirm_delete(event, list)),
+            ft.ElevatedButton("Cancel", on_click=self.close_clicked),
+        ]
+        self.warning.open = True
+        self.page.update()
+
+    def confirm_delete(self, event, list):
+        lists = self.client_storage.get("lists")
         list_name = list.list_name
-        items.pop(list_name)
-        self.client_storage.set("lists", items)
+        lists.pop(list_name)
+        self.client_storage.set("lists", lists)
         self.lists.controls.remove(list)
+        self.warning.actions = [
+            ft.ElevatedButton("OK", on_click=self.close_clicked),
+        ]
+        self.warning.open = False 
         self.update()
+        self.page.update()
 
     def list_open(self, list_name):
         list_page = ListPage(self.client_storage, self.warning, self.page, list_name)
         self.page.controls.remove(self)
         self.page.add(list_page)
 
-    def list_edit(self, list):
-        pass
+    def list_save(self, list_name, list_new_name):
+        lists = self.client_storage.get("lists")
+        lists[list_new_name] = lists[list_name]
+        lists.pop(list_name)
+        self.client_storage.set("lists", lists)
 
 
 def main(page: ft.Page):
